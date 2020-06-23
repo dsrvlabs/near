@@ -23,8 +23,12 @@ do
 	height=$( jq -r '.result.header.height' <<< $content )
 	epoch_start_height=$($rpc_call method=validators params:='[null]' id=dontcare | jq -r .result.epoch_start_height)
 
+	target=""
+
 	if [ "$current_epoch_id" != "$next_epoch_id" ]; then
 		#epoch chagned: PING!
+		near call $validator_id stake '{"amount": "'$target'"}' --accountId=$account_id
+
 		echo "epoch chaged, ping!" 
 		near call $validator_id  ping '{}' --accountId=$account_id
 
@@ -50,19 +54,19 @@ do
 		echo epoch pogress `expr $now_height / 100`%
 
 
-		my_staking_status=$(near state $validator_id | awk '/locked/{print substr($2,7, length($2)-13)}')
-		current_seat_price=$(near validators current | awk '/price/ {print substr($6, 1, length($6)-2)}')
-		next_seat_price=$(near validators next | awk '/price/ {print substr($7, 1, length($7)-2)}')
-		next_next_seat_price=$(near proposals | awk '/price =/ {print substr($15, 1, length($15)-1)}')
-		echo pool_locked_token $my_staking_status
+		my_staking_status=$(near state $validator_id | awk '/locked/{print substr($2,7, length($2)-13)}' | sed 's/,//g')
+		current_seat_price=$(near validators current | awk '/price/ {print substr($6, 1, length($6)-2)}'| sed 's/,//g')
+		next_seat_price=$(near validators next | awk '/price/ {print substr($7, 1, length($7)-2)}'| sed 's/,//g')
+		next_next_seat_price=$(near proposals | awk '/price =/ {print substr($15, 1, length($15)-1)}'| sed 's/,//g')
+
+		echo pool_locked_token: $my_staking_status 
 		echo t+0 seat price: $current_seat_price
 		echo t+1 seat price: $next_seat_price
 		echo t+2 seat price: $next_next_seat_price
 
 		#do something for challenge004, simply next 
-		#near call $validator_id stake '{"amount": "$next_seat_price"}' --accountId=$account_id
-
-
+		target=${next_seat_price}000000000000000000000000
+		echo next target price: $target
 	fi
 	sleep 10
 done
